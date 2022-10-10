@@ -1,34 +1,37 @@
 from flask import Flask
-from flask import request
 from flask import jsonify
-import pickle
-import warnings
-warnings.filterwarnings("ignore")
+from flask import request
+# import pickle
+from answers import log_reg_model, dict_vector_model
 
-# Load Model
-input_model = "model1.bin"
-with open(input_model,"rb") as f_in:
-    model = pickle.load(f_in)
+# input_model = "model1.bin"
+# dict_model = "dv.bin"
 
-# Load Dict Vectorizer
-input_dict_vect = "dv.bin"
-with open(input_dict_vect,"rb") as f_in:
-    dv = pickle.load(f_in)
+# with open(input_model, "rb") as f:
+#     log_reg_model = pickle.load(f)
 
-app = Flask("card")
+# with open(dict_model, "rb") as f:
+#     dict_vector_model = pickle.load(f)
 
-@app.route("/predict",methods = ["POST"])
+def predict(client):
+    X = dict_vector_model.transform(client)
+    pred_prob = log_reg_model.predict_proba(X)
+    return pred_prob
+
+# Flask App
+app = Flask('testing')
+
+@app.route('/predict', methods=['POST'])
+
 def predict():
-    data = request.get_json()
-    X = dv.transform([data])
-    proba = model.predict_proba(X)[0,1]
-    card  = proba>=0.5
-    result = {"proba":float(proba),
-              "get_card":bool(card)
-              }
-    
+    client = request.get_json()
+    x_test = dict_vector_model.transform(client)
+    y_pred_proba = log_reg_model.predict_proba(x_test)[:,1]
+    result = {
+        'card_approved_probability': float(y_pred_proba)
+    }
+
     return jsonify(result)
 
-
-if __name__ =="__main__":
-    app.run(debug=True, host="0.0.0.0",port=9696)
+if __name__ == '__main__':
+    app.run(debug=True, port=9696)
